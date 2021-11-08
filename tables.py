@@ -12,13 +12,13 @@ def load_from_json(filename):
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////my_db.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db/my_db.db"
 # app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
 class Users(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
@@ -31,8 +31,10 @@ class Users(db.Model):
 class Offer(db.Model):
     __tablename__ = "offer"
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer)
-    executor_id = db.Column(db.Integer)
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"))
+    executor_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    users = db.relationship("Users", foreign_keys=[executor_id])
+    order = db.relationship("Order", foreign_keys=[order_id])
 
 
 class Order(db.Model):
@@ -44,40 +46,17 @@ class Order(db.Model):
     end_date = db.Column(db.Date)
     address = db.Column(db.String(1000))
     price = db.Column(db.Integer)
-    customer_id = db.Column(db.Integer)
-    executor_id = db.Column(db.Integer)
-
+    customer_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    executor_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    users1 = db.relationship("Users", foreign_keys=[customer_id])
+    users2 = db.relationship("Users", foreign_keys=[executor_id])
+    
 
 db.drop_all()
 db.create_all()
 
 
-users = load_from_json("users.json")
-all_users = []
-for user in users:
-    new_user = Users(
-        id = user["id"],
-        first_name = user["first_name"],
-        last_name = user["last_name"],
-        age = user["age"],
-        email = user["email"],
-        role = user["role"],
-        phone = user["phone"]
-    )
-    all_users.append(new_user)
-
-
-offers = load_from_json("offers.json")
-all_offers = []
-for offer in offers:
-    new_offer = Offer(
-        id = offer["id"],
-        order_id = offer["order_id"],
-        executor_id = offer["executor_id"]
-    )
-    all_offers.append(new_offer)
-
-
+print("------------------------------LOADING ORDERS------------------------------")
 orders = load_from_json("orders.json")
 all_orders = []
 for order in orders:
@@ -86,20 +65,69 @@ for order in orders:
     dates = [int(i) for i in order["end_date"].split("/")]
     order["end_date"] = date(dates[2], dates[0], dates[1])
     new_order = Order(
-        id = order["id"],
-        name = order["name"],
-        description = order["description"],
-        start_date = order["start_date"],
-        end_date = order["end_date"],
-        address = order["address"],
-        price = order["price"],
-        customer_id = order["customer_id"],
-        executor_id = order["executor_id"]
+        id=order["id"],
+        name=order["name"],
+        description=order["description"],
+        start_date=order["start_date"],
+        end_date=order["end_date"],
+        address=order["address"],
+        price=order["price"],
+        customer_id=order["customer_id"],
+        executor_id=order["executor_id"]
     )
     all_orders.append(new_order)
+print("------------------------------ORDERS LOADED------------------------------")
 
 
+print("------------------------------LOADING OFFERS------------------------------")
+offers = load_from_json("offers.json")
+all_offers = []
+for offer in offers:
+    new_offer = Offer(
+        id=offer["id"],
+        order_id=offer["order_id"],
+        executor_id=offer["executor_id"]
+    )
+    all_offers.append(new_offer)
+print("------------------------------OFFERS LOADED------------------------------")
+
+
+print("------------------------------LOADING USERS------------------------------")
+users = load_from_json("users.json")
+all_users = []
+for user in users:
+    new_user = Users(
+        id=user["id"],
+        first_name=user["first_name"],
+        last_name=user["last_name"],
+        age=user["age"],
+        email=user["email"],
+        role=user["role"],
+        phone=user["phone"]
+    )
+    all_users.append(new_user)
+print("------------------------------USERS LOADED------------------------------")
+
+
+print("______________________________STARTING SESSION______________________________")
 with db.session.begin():
-    db.session.add_all(all_users)
-    db.session.add_all(all_orders)
-    db.session.add_all(all_offers)
+    try:
+        print("trying to add users... ", end="")
+        db.session.add_all(all_users)
+        print("done")
+    except Exception.SQLAlchemy as err:
+        print(err)
+    finally:
+        try:
+            print("trying to add orders... ", end="")
+            db.session.add_all(all_orders)
+            print("done")
+        except Exception.SQLAlchemy as err:
+            print(err)
+        finally:
+            try:
+                print("trying to add offers... ", end="")
+                db.session.add_all(all_offers)
+                print("done")
+            except Exception.SQLAlchemy as err:
+                print(err)
