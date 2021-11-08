@@ -51,7 +51,7 @@ def page_get_user(uid):
         else:
             return "No such user", 404
 
-    elif request.method == "POST":
+    elif request.method == "PUT":
         user = request.get_json()
         new_user = Users(
                           id=user["id"],
@@ -64,8 +64,14 @@ def page_get_user(uid):
                           )
         with db.session.begin():
             db.session.add(new_user)
-
+            db.session.commit()
         return "User added"
+
+    elif request.method == "DELETE":
+        user = db.session.query(Users).get(uid)
+        db.session.delete(user)
+        db.session.commit()
+        return "User deleted"
     
     
 @app.route("/orders")
@@ -114,12 +120,31 @@ def page_get_order(oid):
         else:
             return "Order not found", 404
 
-    elif request.method == "POST":
-        new_order = request.get_json()
+    elif request.method == "PUT":
+        order = request.get_json()
+
+        new_order = Order(
+            id=order["id"],
+            name=order["name"],
+            description=order["description"],
+            start_date=order["start_date"],
+            end_date=order["end_date"],
+            address=order["address"],
+            price=order["price"],
+            customer_id=order["customer_id"],
+            executor_id=order["executor_id"]
+        )
 
         with db.session.begin():
             db.session.add(new_order)
+            db.session.commit()
         return "New order is added"
+
+    elif request.method == "DELETE":
+        order = db.session.query(Order).get(oid)
+        db.session.delete(order)
+        db.session.commit()
+        return "Order deleted"
     
 
 @app.route("/offers")
@@ -141,21 +166,41 @@ def page_get_all_offers():
 
 @app.route("/offers/<int:oid>", methods=["GET", "PUT", "DELETE"])
 def page_get_offer(oid):
-    offer = db.session.query(Offer).filter(Offer.id == oid).all()[0]
 
-    if offer:
-        offer = {
-            "id": offer.id,
-            "order_id": offer.order_id,
-            "executor_id": offer.executor_id
-        }
-        return jsonify(offer)
-    else:
-        return "Offer not found", 404
+    if request.method == "GET":
 
+        offer = db.session.query(Offer).filter(Offer.id == oid).all()[0]
 
-user = db.session.query(Users).filter(Users.id == 2).all()
-print(user)
+        if offer:
+            offer = {
+                "id": offer.id,
+                "order_id": offer.order_id,
+                "executor_id": offer.executor_id
+            }
+            return jsonify(offer)
+        else:
+            return "Offer not found", 404
+
+    elif request.method == "PUT":
+        offer = request.get_json()
+
+        new_offer = Offer(
+            id=offer["id"],
+            order_id=offer["order_id"],
+            executor_id=offer["executor_id"]
+        )
+
+        with db.session.begin():
+            db.session.add(new_offer)
+            db.session.commit()
+        print("New offer is added")
+
+    elif request.method == "DELETE":
+        offer = db.session.query(Offer).get(oid)
+        db.session.delete(offer)
+        db.session.commit()
+        return "Offer deleted"
+
 
 if __name__ == "__main__":
     app.run(port=8000, debug=True)
