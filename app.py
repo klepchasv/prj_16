@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from tables import Users, Order, Offer
+from datetime import date
 
 app = Flask(__name__)
 
@@ -52,7 +53,7 @@ def page_get_user(uid):
             return "No such user", 404
 
     elif request.method == "PUT":
-        user = request.get_json()
+        user = request.get_json()[0]
         new_user = Users(
                           id=user["id"],
                           first_name=user["first_name"],
@@ -121,7 +122,11 @@ def page_get_order(oid):
             return "Order not found", 404
 
     elif request.method == "PUT":
-        order = request.get_json()
+        order = request.get_json()[0]
+        dates = [int(i) for i in order["start_date"].split("/")]
+        order["start_date"] = date(dates[2], dates[0], dates[1])
+        dates = [int(i) for i in order["end_date"].split("/")]
+        order["end_date"] = date(dates[2], dates[0], dates[1])
 
         new_order = Order(
             id=order["id"],
@@ -182,8 +187,7 @@ def page_get_offer(oid):
             return "Offer not found", 404
 
     elif request.method == "PUT":
-        offer = request.get_json()
-
+        offer = request.get_json()[0]
         new_offer = Offer(
             id=offer["id"],
             order_id=offer["order_id"],
@@ -193,7 +197,7 @@ def page_get_offer(oid):
         with db.session.begin():
             db.session.add(new_offer)
             db.session.commit()
-        print("New offer is added")
+        return "New offer is added"
 
     elif request.method == "DELETE":
         offer = db.session.query(Offer).get(oid)
